@@ -1,0 +1,1 @@
+packageSearchIndex = [{"l":"All Packages","u":"allpackages-index.html"},{"l":"vendingmachine"},{"l":"vendingmachine.currency"},{"l":"vendingmachine.flags"},{"l":"vendingmachine.product.bean"},{"l":"vendingmachine.product.utilities"},{"l":"vendingmachine.products"},{"l":"vendingmachine.utilities"}];updateSearchResults();
