@@ -7,8 +7,21 @@ import vendingmachine.products.Gum;
 import vendingmachine.products.PotatoChips;
 import vendingmachine.utilities.VendingMachineUtilities;
 
+/**
+ * Represents a vending machine that allows users to purchase products.
+ * This class initializes products, displays them to the user,
+ * and processes purchase requests.
+ */
 public class VendingMachine {
 
+	/**
+	 * The main method for the vending machine application.
+	 * Initializes products, displays them, and handles user interaction for purchasing items.
+	 *
+	 * @param args Command line arguments (not used).
+	 * @throws InterruptedException If the thread is interrupted while sleeping.
+	 * @throws MalformedURLException If a malformed URL has occurred.
+	 */
 	public static void main( String[] args ) throws InterruptedException, MalformedURLException {
 
 		Gum gum = new Gum();
