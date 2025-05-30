@@ -1,6 +1,7 @@
 package vendingmachine.utilities;
 
 import java.net.MalformedURLException;
+import java.util.List; // Added for the new method
 import java.util.Scanner;
 
 import vendingmachine.currency.Currency;
@@ -17,7 +18,8 @@ import vendingmachine.product.utilities.ProductUtilities;
 public class VendingMachineUtilities extends Currency {
 
 	private static int amountPaid;
-	private static int vendingMachineEmptyFlag;
+	private static boolean vendingMachineEmptyFlag = true; // Default to true (not empty)
+	private static final Scanner inputScanner = new Scanner(System.in);
 
 	/**
 	 * Gets the total amount paid by the user.
@@ -39,18 +41,18 @@ public class VendingMachineUtilities extends Currency {
 
 	/**
 	 * Gets the flag indicating whether the vending machine is empty.
-	 * @return 0 if empty, 1 otherwise.
+	 * @return `false` if empty, `true` otherwise (i.e., if it has stock).
 	 */
-	public static int getVendingMachineEmptyFlag() {
+	public static boolean getVendingMachineEmptyFlag() {
 
 		return vendingMachineEmptyFlag;
 	}
 
 	/**
 	 * Sets the flag indicating whether the vending machine is empty.
-	 * @param vendingMachineEmptyFlag 0 if empty, 1 otherwise.
+	 * @param vendingMachineEmptyFlag `false` if empty, `true` otherwise.
 	 */
-	public static void setVendingMachineEmptyFlag( int vendingMachineEmptyFlag ) {
+	public static void setVendingMachineEmptyFlag( boolean vendingMachineEmptyFlag ) {
 
 		VendingMachineUtilities.vendingMachineEmptyFlag = vendingMachineEmptyFlag;
 	}
@@ -61,18 +63,24 @@ public class VendingMachineUtilities extends Currency {
 	 * @return The valid product index entered by the user.
 	 */
 	public static int getProductIndex() {
-
-		System.out.println( "Please enter the index of product you want to buy." );
-		Scanner inputFromKeyboard = new Scanner( System.in );
-		int indexValue = inputFromKeyboard.nextInt();
-		inputFromKeyboard.nextLine();
-		if( indexValue < 1 || indexValue > (Products.getProductsCount()) ) {
-
-			System.out.println( "User entered Incorrect index value." );
-			System.out.println( "Index value should range form 1 to " + (Products.getProductsCount()) );
-			return getProductIndex();
-		} else {
-			return indexValue;
+		// Scanner inputFromKeyboard = new Scanner(System.in); // Will be replaced by shared scanner later
+		int indexValue;
+		while (true) {
+			System.out.println( "Please enter the index of product you want to buy." );
+			// Basic input validation for integer type
+			if (inputScanner.hasNextInt()) {
+				indexValue = inputScanner.nextInt();
+				inputScanner.nextLine(); // Consume newline
+				if (indexValue >= 1 && indexValue <= Products.getProductsCount()) {
+					return indexValue;
+				} else {
+					System.out.println( "User entered Incorrect index value." );
+					System.out.println( "Index value should range from 1 to " + Products.getProductsCount() );
+				}
+			} else {
+				System.out.println("Invalid input. Please enter a number.");
+				inputScanner.nextLine(); // Consume invalid input
+			}
 		}
 	}
 
@@ -82,19 +90,20 @@ public class VendingMachineUtilities extends Currency {
 	 * @return The valid coin string entered by the user.
 	 */
 	public static String getCoin() {
+		// Scanner inputFromKeyboard = new Scanner(System.in); // Will be replaced by shared scanner later
+		String coin;
+		while (true) {
+			System.out.println( "Please enter Coin. (Valid coin values are NIKEL, DIMES and QUARTER.)" );
+			coin = inputScanner.next();
+			inputScanner.nextLine(); // Consume newline
 
-		System.out.println( "Please enter Coin. (Valid coin values are NIKEL, DIMES and QUARTER.)" );
-		Scanner inputFromKeyboard = new Scanner( System.in );
-		String coin = inputFromKeyboard.next();
-		inputFromKeyboard.nextLine();
-		if( coin.equals( "NIKEL" ) || coin.equals( "DIMES" ) || coin.equals( "QUARTER" ) ) {
-			System.out.println( "You entered a " + coin );
-			return coin;
-
-		} else {
-			System.out.println( "You entered a incorrect coin value" );
-			System.out.println( "Valid coin values are NIKEL, DIMES and QUARTER." );
-			return coin;
+			if (coin.equals("NIKEL") || coin.equals("DIMES") || coin.equals("QUARTER")) {
+				System.out.println("You entered a " + coin);
+				return coin;
+			} else {
+				System.out.println("You entered an incorrect coin value.");
+				// The message "Valid coin values are NIKEL, DIMES and QUARTER." will be printed again at the start of the loop.
+			}
 		}
 	}
 
@@ -103,13 +112,21 @@ public class VendingMachineUtilities extends Currency {
 	 * @param insertedCoin The string representation of the coin inserted (e.g., "NIKEL", "DIMES", "QUARTER").
 	 */
 	public static void calculateInsertedCoinsValue( String insertedCoin ) {
-
-		if( insertedCoin.equals( "NIKEL" ) ) {
-			setAmountPaid( getAmountPaid() + getNikel() );
-		} else if( insertedCoin.equals( "DIMES" ) ) {
-			setAmountPaid( getAmountPaid() + getDimes() );
-		} else if( insertedCoin.equals( "QUARTER" ) ) {
-			setAmountPaid( getAmountPaid() + getQuarter() );
+		switch (insertedCoin) {
+			case "NIKEL":
+				setAmountPaid( getAmountPaid() + getNikel() );
+				break;
+			case "DIMES":
+				setAmountPaid( getAmountPaid() + getDimes() );
+				break;
+			case "QUARTER":
+				setAmountPaid( getAmountPaid() + getQuarter() );
+				break;
+			default:
+				// This case should ideally not be reached if getCoin() validates properly.
+				// However, adding a default for robustness or logging.
+				System.out.println("Warning: calculateInsertedCoinsValue received an unhandled coin type: " + insertedCoin);
+				break;
 		}
 	}
 
@@ -125,9 +142,9 @@ public class VendingMachineUtilities extends Currency {
 			calculateInsertedCoinsValue( coin );
 			System.out.println( "Total amount paid is: " + getAmountPaid() + "cent" );
 			System.out.println( "Enter y to enter more coins and any other key to exit" );
-			Scanner inputFromKeyboard = new Scanner( System.in );
-			userEntersMoreCoin = inputFromKeyboard.next();
-			inputFromKeyboard.nextLine();
+			// Scanner inputFromKeyboard = new Scanner( System.in ); // Replaced by shared scanner
+			userEntersMoreCoin = inputScanner.next();
+			inputScanner.nextLine(); // Consume newline
 		} while( userEntersMoreCoin.equalsIgnoreCase( "y" ) );
 	}
 
@@ -205,12 +222,39 @@ public class VendingMachineUtilities extends Currency {
 	public static void vendingMachineEmpty( Products p1, Products p2, Products p3 ) {
 
 		if( p1.getProductQuantity() == 0 && p2.getProductQuantity() == 0 && p3.getProductQuantity() == 0 ) {
-			setVendingMachineEmptyFlag( 0 );
+			setVendingMachineEmptyFlag( false ); // Machine is empty
 			System.out.println( "Vending Machine is OUT OF STOCK !!" );
 		} else {
-			setVendingMachineEmptyFlag( 1 );
+			setVendingMachineEmptyFlag( true ); // Machine is not empty
 		}
 
+	}
+
+	/**
+	 * Checks if the vending machine is out of stock for all products in the provided list.
+	 * Sets the {@link #vendingMachineEmptyFlag} accordingly.
+	 * Prints a message if the machine is out of stock.
+	 * @param products A list of products to check.
+	 */
+	public static void vendingMachineEmpty( List<Products> products ) {
+		boolean allEmpty = true;
+		if (products == null || products.isEmpty()) {
+			allEmpty = true; // Or handle as an error, for now, consider empty list as "empty machine"
+		} else {
+			for (Products product : products) {
+				if (product.getProductQuantity() > 0) {
+					allEmpty = false;
+					break;
+				}
+			}
+		}
+
+		if (allEmpty) {
+			setVendingMachineEmptyFlag( false ); // Machine is empty
+			System.out.println( "Vending Machine is OUT OF STOCK !!" );
+		} else {
+			setVendingMachineEmptyFlag( true ); // Machine is not empty
+		}
 	}
 
 }
