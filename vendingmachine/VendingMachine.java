@@ -36,6 +36,7 @@ public class VendingMachine {
 					+ cocacola.getProductQuantity() );
 			System.out.println( "3    \t " + potatochips.getProductName() + "\t\t " + potatochips.getProductCost() + " cent\t\t"
 					+ potatochips.getProductQuantity() );
+			System.out.println( "4    \t Restock Products" );
 			indexValue = VendingMachineUtilities.getProductIndex();
 
 			switch( indexValue ) {
@@ -47,6 +48,9 @@ public class VendingMachine {
 					break;
 				case 3:
 					VendingMachineUtilities.purchase( potatochips );
+					break;
+				case 4:
+					VendingMachineUtilities.restockProducts( gum, cocacola, potatochips );
 					break;
 				default:
 					break;

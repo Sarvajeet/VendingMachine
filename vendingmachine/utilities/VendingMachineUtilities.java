@@ -213,4 +213,87 @@ public class VendingMachineUtilities extends Currency {
 
 	}
 
+	/**
+	 * Prompts the user to enter the index of the product they want to restock.
+	 * Validates the input to ensure it's within the valid range (1-3).
+	 * @return The valid product index (1, 2, or 3) entered by the user.
+	 */
+	private static int getProductIndexToRestock() {
+		System.out.println( "Enter the index of the product you want to restock:" );
+		System.out.println( "1: Gum, 2: CocaCola, 3: PotatoChips" );
+		Scanner inputFromKeyboard = new Scanner( System.in );
+		int indexValue = inputFromKeyboard.nextInt();
+		inputFromKeyboard.nextLine(); // Consume newline
+
+		if ( indexValue < 1 || indexValue > 3 ) {
+			System.out.println( "Invalid index. Please enter 1, 2, or 3." );
+			return getProductIndexToRestock(); // Recursive call for valid input
+		}
+		return indexValue;
+	}
+
+	/**
+	 * Prompts the user to enter the quantity to add for restocking.
+	 * Validates the input to ensure it's a positive integer.
+	 * @return The valid positive quantity entered by the user.
+	 */
+	private static int getQuantityToRestock() {
+		System.out.println( "Enter the quantity to add for the selected product:" );
+		Scanner inputFromKeyboard = new Scanner( System.in );
+		int quantity = inputFromKeyboard.nextInt();
+		inputFromKeyboard.nextLine(); // Consume newline
+
+		if ( quantity <= 0 ) {
+			System.out.println( "Invalid quantity. Please enter a positive number." );
+			return getQuantityToRestock(); // Recursive call for valid input
+		}
+		return quantity;
+	}
+
+	/**
+	 * Allows the user to restock products in the vending machine.
+	 * Displays current stock, prompts for product and quantity to add,
+	 * and updates the product quantity.
+	 * @param gum The Gum product object.
+	 * @param cocacola The CocaCola product object.
+	 * @param potatochips The PotatoChips product object.
+	 */
+	public static void restockProducts( Products gum, Products cocacola, Products potatochips ) {
+		System.out.println( "\nCurrent Stock:" );
+		System.out.println( "1: " + gum.getProductName() + " - Quantity: " + gum.getProductQuantity() );
+		System.out.println( "2: " + cocacola.getProductName() + " - Quantity: " + cocacola.getProductQuantity() );
+		System.out.println( "3: " + potatochips.getProductName() + " - Quantity: " + potatochips.getProductQuantity() );
+		System.out.println();
+
+		int productIndex = getProductIndexToRestock();
+		int quantityToAdd = getQuantityToRestock();
+
+		Products selectedProduct = null;
+		String productName = "";
+
+		switch ( productIndex ) {
+			case 1:
+				selectedProduct = gum;
+				productName = gum.getProductName();
+				break;
+			case 2:
+				selectedProduct = cocacola;
+				productName = cocacola.getProductName();
+				break;
+			case 3:
+				selectedProduct = potatochips;
+				productName = potatochips.getProductName();
+				break;
+			default:
+				// Should not happen due to validation in getProductIndexToRestock
+				System.out.println( "Error: Invalid product index." );
+				return;
+		}
+
+		selectedProduct.setProductQuantity( selectedProduct.getProductQuantity() + quantityToAdd );
+		System.out.println( "Successfully restocked " + productName + "." );
+		System.out.println( "Added: " + quantityToAdd + ". New total: " + selectedProduct.getProductQuantity() );
+		System.out.println();
+		vendingMachineEmpty(gum, cocacola, potatochips); // Update empty flag
+	}
 }
