@@ -9,60 +9,41 @@ import vendingmachine.products.PotatoChips;
 import vendingmachine.user.UserAccount; // Added import
 import vendingmachine.user.UserManagement; // Added import
 import vendingmachine.utilities.VendingMachineUtilities;
+import vendingmachine.ui.MenuHandler; // Added import for MenuHandler
+import vendingmachine.ui.ProcessChoiceResult; // Required for result type
 
 /**
- * Represents a vending machine that allows users to purchase products.
- * This class initializes products, displays them to the user,
- * and processes purchase requests, including user account interactions.
+ * Main class for the Vending Machine application.
+ * This class orchestrates the overall application flow. It initializes product inventory,
+ * manages user sessions (login/logout), and processes user interactions through a console menu.
+ * Menu display and choice processing are delegated to the {@link MenuHandler} class.
+ * User account management is handled by {@link UserManagement}, and various utilities
+ * (like product restocking, account operations) are provided by {@link VendingMachineUtilities}.
+ * Payment processing for coin-based transactions is handled by {@link vendingmachine.payment.PaymentProcessor}.
  */
 public class VendingMachine {
 
-	private static UserManagement userManager = new UserManagement();
-	private static UserAccount currentUser = null;
-	private static Scanner mainScanner = new Scanner(System.in);
+	private static UserManagement userManager = new UserManagement(); // Manages user accounts
+	private static UserAccount currentUser = null; // Holds the currently logged-in user, if any
+	private static Scanner mainScanner = new Scanner(System.in); // Scanner for reading main menu input
 
-	private static void displayProductListing(Products gum, Products cocacola, Products potatochips) {
-		System.out.println( "Index \t ProductName \t\t Cost \t\t Quantity Available " );
-		System.out.println( "1    \t " + gum.getProductName() + "\t\t\t " + gum.getProductCost() + " cent\t\t" + gum.getProductQuantity() );
-		System.out.println( "2    \t " + cocacola.getProductName() + "\t\t " + cocacola.getProductCost() + " cent\t\t"
-				+ cocacola.getProductQuantity() );
-		System.out.println( "3    \t " + potatochips.getProductName() + "\t\t " + potatochips.getProductCost() + " cent\t\t"
-				+ potatochips.getProductQuantity() );
-	}
-
-	private static void displayLoggedOutMenu(Products gum, Products cocacola, Products potatochips) {
-		System.out.println( "\n--- Vending Machine Menu ---" );
-		displayProductListing(gum, cocacola, potatochips);
-		System.out.println( "4    \t Restock Products" );
-		System.out.println( "5    \t Login to User Account" );
-		System.out.println( "6    \t Create User Account" );
-		System.out.println( "7    \t Exit" );
-		System.out.print( "Please enter your choice: " );
-	}
-
-	private static void displayLoggedInMenu(Products gum, Products cocacola, Products potatochips) {
-		System.out.println( "\n--- Vending Machine Menu ---" );
-		System.out.println( "Logged in as: " + currentUser.getUserID() );
-		displayProductListing(gum, cocacola, potatochips);
-		System.out.println( "4    \t Restock Products" );
-		System.out.println( "5    \t View Account Balance" );
-		System.out.println( "6    \t Load Account Balance" );
-		System.out.println( "7    \t Logout" );
-		System.out.println( "8    \t Exit" );
-		System.out.print( "Please enter your choice: " );
-	}
-
+	// displayProductListing, displayLoggedOutMenu, and displayLoggedInMenu methods were moved to MenuHandler.
 
 	/**
-	 * The main method for the vending machine application.
-	 * Initializes products, displays them, and handles user interaction for purchasing items.
+	 * The main entry point for the Vending Machine application.
+	 * It sets up the initial state (products, user manager), and then enters a loop
+	 * to display menus, get user input, and process choices via {@link MenuHandler}.
+	 * The loop continues until the user chooses to exit.
+	 * It also handles user session state (logged in/out) and updates it based on
+	 * results from menu choice processing.
 	 *
 	 * @param args Command line arguments (not used).
-	 * @throws InterruptedException If the thread is interrupted while sleeping.
-	 * @throws MalformedURLException If a malformed URL has occurred.
+	 * @throws InterruptedException If any thread operations are interrupted (currently not explicitly used but part of original signature).
+	 * @throws MalformedURLException If any URL operations encounter issues (currently not explicitly used but part of original signature).
 	 */
 	public static void main( String[] args ) throws InterruptedException, MalformedURLException {
 
+		// Initialize products
 		Gum gum = new Gum();
 		CocaCola cocacola = new CocaCola();
 		PotatoChips potatochips = new PotatoChips();
@@ -76,9 +57,9 @@ public class VendingMachine {
 
 		do {
 			if (currentUser == null) {
-				displayLoggedOutMenu(gum, cocacola, potatochips);
+				MenuHandler.displayLoggedOutMenu(gum, cocacola, potatochips);
 			} else {
-				displayLoggedInMenu(gum, cocacola, potatochips);
+				MenuHandler.displayLoggedInMenu(currentUser, gum, cocacola, potatochips);
 			}
 
 			if (mainScanner.hasNextInt()) {
@@ -90,76 +71,20 @@ public class VendingMachine {
 				indexValue = -1; // Invalid choice to force loop continuation or error handling
 			}
 
-
-			if (currentUser == null) { // Logged Out State
-				switch( indexValue ) {
-					case 1: // Buy Gum
-						VendingMachineUtilities.purchase( gum );
-						break;
-					case 2: // Buy CocaCola
-						VendingMachineUtilities.purchase( cocacola );
-						break;
-					case 3: // Buy PotatoChips
-						VendingMachineUtilities.purchase( potatochips );
-						break;
-					case 4: // Restock
-						VendingMachineUtilities.restockProducts( gum, cocacola, potatochips );
-						break;
-					case 5: // Login
-						currentUser = VendingMachineUtilities.handleLogin(userManager);
-						break;
-					case 6: // Create Account
-						VendingMachineUtilities.handleCreateAccount(userManager);
-						break;
-					case 7: // Exit
-						System.out.println( "Exiting application. Thank you!" );
-						exitApp = true;
-						break;
-					default:
-						System.out.println( "Invalid choice. Please try again." );
-						break;
-				}
-			} else { // Logged In State
-				switch( indexValue ) {
-					case 1: // Buy Gum
-					case 2: // Buy CocaCola
-					case 3: // Buy PotatoChips
-						Products selectedProduct = null;
-						if (indexValue == 1) selectedProduct = gum;
-						else if (indexValue == 2) selectedProduct = cocacola;
-						else selectedProduct = potatochips;
-
-						System.out.print( "Pay with account balance (Y/N)? " );
-						String payWithAccountChoice = mainScanner.nextLine().trim();
-						if (payWithAccountChoice.equalsIgnoreCase("Y")) {
-							VendingMachineUtilities.purchaseWithAccount(selectedProduct, currentUser);
-						} else {
-							VendingMachineUtilities.purchase( selectedProduct );
-						}
-						break;
-					case 4: // Restock
-						VendingMachineUtilities.restockProducts( gum, cocacola, potatochips );
-						break;
-					case 5: // View Balance
-						VendingMachineUtilities.handleViewBalance(currentUser);
-						break;
-					case 6: // Load Balance
-						VendingMachineUtilities.handleLoadBalance(currentUser);
-						break;
-					case 7: // Logout
-						currentUser = null;
-						System.out.println( "Logged out successfully." );
-						break;
-					case 8: // Exit
-						System.out.println( "Exiting application. Thank you!" );
-						exitApp = true;
-						break;
-					default:
-						System.out.println( "Invalid choice. Please try again." );
-						break;
-				}
+			// Process the user's choice using MenuHandler
+			ProcessChoiceResult result;
+			if (currentUser == null) { // User is currently logged out
+				result = MenuHandler.processLoggedOutChoice(indexValue, mainScanner, userManager, gum, cocacola, potatochips);
+			} else { // User is currently logged in
+				result = MenuHandler.processLoggedInChoice(indexValue, mainScanner, currentUser, userManager, gum, cocacola, potatochips);
 			}
-			// Update vending machine empty status if needed, but loop is controlled by exitApp
+
+			// Update current user status (e.g., after login/logout) and exit flag based on processing result
+			currentUser = result.currentUser;
+			exitApp = result.exitApplication;
+
+			// After each action (if not exiting), check and update the vending machine's empty status.
+			// This flag might be used by other parts of the system or for display purposes.
 			if (!exitApp) {
 				VendingMachineUtilities.vendingMachineEmpty( gum, potatochips, cocacola );
 			}

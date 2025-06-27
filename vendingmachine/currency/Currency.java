@@ -19,6 +19,11 @@ public class Currency {
 	 */
 	final static int QUARTER = 25;
 
+	// Coin name constants
+	public static final String NIKEL_STR = "NIKEL";
+	public static final String DIMES_STR = "DIMES";
+	public static final String QUARTER_STR = "QUARTER";
+
 	/**
 	 * Gets the value of a Nikel coin.
 	 * @return The value of a Nikel in cents.

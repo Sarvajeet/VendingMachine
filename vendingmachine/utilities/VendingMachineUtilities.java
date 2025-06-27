@@ -10,78 +10,69 @@ import vendingmachine.product.bean.Products;
 import vendingmachine.product.utilities.ProductUtilities;
 import vendingmachine.user.UserAccount; // Added import
 import vendingmachine.user.UserManagement; // Added import
+import vendingmachine.payment.PaymentProcessor; // Added import
 
 /**
- * Provides utility methods for the vending machine operations.
- * This class handles user input, coin calculations, purchase processing,
- * checking the vending machine's stock status, and user account management tasks.
- * It extends the {@link Currency} class to access coin values.
+ * Provides utility methods for various operations of the Vending Machine.
+ * This class is responsible for handling user input for product selection,
+ * managing product stock (restocking, checking if empty), coordinating purchase processes
+ * (delegating to PaymentProcessor for coin payments or handling account payments directly),
+ * and managing user account interactions like login, creation, and balance operations.
+ * It extends the {@link Currency} class, primarily to inherit coin value definitions,
+ * though direct coin processing has largely moved to {@link PaymentProcessor}.
  */
 public class VendingMachineUtilities extends Currency {
 
-	private static int amountPaid;
-	private static int vendingMachineEmptyFlag;
-	private static final Scanner utilScanner = new Scanner(System.in); // Centralized Scanner
+	// private static int amountPaid; // Removed - coin payment state now managed in PaymentProcessor
+	private static int vendingMachineEmptyFlag; // Flag indicating if all products are out of stock.
+	private static final Scanner utilScanner = new Scanner(System.in); // Centralized Scanner for utility input.
 
 	/**
-	 * Gets the total amount paid by the user.
-	 * @return The amount paid in cents.
-	 */
-	public static int getAmountPaid() {
-
-		return amountPaid;
-	}
-
-	/**
-	 * Sets the total amount paid by the user.
-	 * @param amountPaid The amount paid in cents.
-	 */
-	public static void setAmountPaid( int amountPaid ) {
-
-		VendingMachineUtilities.amountPaid = amountPaid;
-	}
-
-	/**
-	 * Gets the flag indicating whether the vending machine is empty.
-	 * @return 0 if empty, 1 otherwise.
+	 * Gets the flag indicating whether the vending machine is completely out of stock.
+	 *
+	 * @return 0 if all products are empty, 1 otherwise.
 	 */
 	public static int getVendingMachineEmptyFlag() {
-
 		return vendingMachineEmptyFlag;
 	}
 
 	/**
-	 * Sets the flag indicating whether the vending machine is empty.
-	 * @param vendingMachineEmptyFlag 0 if empty, 1 otherwise.
+	 * Sets the flag indicating whether the vending machine is completely out of stock.
+	 * This flag is typically updated after purchases or restocking.
+	 *
+	 * @param flagValue 0 if all products are empty, 1 otherwise.
 	 */
-	public static void setVendingMachineEmptyFlag( int vendingMachineEmptyFlag ) {
-
-		VendingMachineUtilities.vendingMachineEmptyFlag = vendingMachineEmptyFlag;
+	public static void setVendingMachineEmptyFlag( int flagValue ) {
+		VendingMachineUtilities.vendingMachineEmptyFlag = flagValue;
 	}
 
 	/**
-	 * Prompts the user to enter the index of the product they want to buy.
-	 * Validates the input to ensure it's within the valid range of product indices.
-	 * @return The valid product index entered by the user.
+	 * Prompts the user to enter the index of the product they wish to interact with (e.g., for purchase).
+	 * Input is validated to ensure it's a number within the valid range of available product indices.
+	 * This method is specifically for selecting a product from the displayed list, not for main menu choices.
+	 *
+	 * @return The valid product index (1-based) entered by the user.
 	 */
 	public static int getProductIndex() {
-		// This method is for product selection during purchase,
-		// distinct from main menu choice.
-		System.out.println( "Please enter the index of product you want to buy (1-" + Products.getProductsCount() + ")." );
-		int indexValue = -1;
-		try {
-			indexValue = utilScanner.nextInt();
-		} catch (InputMismatchException e) {
-			// Handled below by default value and re-prompt
-		}
-		utilScanner.nextLine(); // Consume newline
+		while (true) {
+			System.out.println( "Please enter the index of product you want to buy (1-" + Products.getProductsCount() + ")." );
+			int indexValue = -1;
+			try {
+				indexValue = utilScanner.nextInt();
+			} catch (InputMismatchException e) {
+				System.out.println( "Invalid input. Please enter a number." );
+			}
+			utilScanner.nextLine(); // Consume newline or invalid input
 
-		if( indexValue < 1 || indexValue > (Products.getProductsCount()) ) {
-			System.out.println( "User entered Incorrect index value." );
-			System.out.println( "Index value should range from 1 to " + (Products.getProductsCount()) );
-			return getProductIndex();
-		} else {
-			return indexValue;
+			if (indexValue >= 1 && indexValue <= Products.getProductsCount()) {
+				return indexValue;
+			} else {
+				// Error message printed if not an InputMismatchException but still out of range
+				if (indexValue != -1) { // Avoid double error message if already caught by InputMismatch
+					System.out.println( "User entered Incorrect index value." );
+				}
+				System.out.println( "Index value should range from 1 to " + (Products.getProductsCount()) );
+			}
 		}
 	}
 
@@ -90,124 +81,50 @@ public class VendingMachineUtilities extends Currency {
 	 * Validates the input to ensure it's a valid coin type.
 	 * @return The valid coin string entered by the user.
 	 */
-	public static String getCoin() {
-		System.out.println( "Please enter Coin. (Valid coin values are NIKEL, DIMES and QUARTER.)" );
-		String coin = utilScanner.next().toUpperCase(); // Read and convert to upper for easier comparison
-		utilScanner.nextLine(); // Consume newline
-
-		if( coin.equals( "NIKEL" ) || coin.equals( "DIMES" ) || coin.equals( "QUARTER" ) ) {
-			System.out.println( "You entered a " + coin );
-			return coin;
-		} else {
-			System.out.println( "You entered an incorrect coin value." );
-			System.out.println( "Valid coin values are NIKEL, DIMES and QUARTER." );
-			// Recursive call or loop might be better, but for now, this matches original style
-			return getCoin();
-		}
-	}
-
+	// Coin processing methods (getCoin, calculateInsertedCoinsValue, getTotalAmountFromUser, calculateChange, buy)
+	// have been moved to the vendingmachine.payment.PaymentProcessor class.
 
 	/**
-	 * Calculates the value of the inserted coin and adds it to the total amount paid.
-	 * @param insertedCoin The string representation of the coin inserted (e.g., "NIKEL", "DIMES", "QUARTER").
-	 */
-	public static void calculateInsertedCoinsValue( String insertedCoin ) {
-
-		if( insertedCoin.equals( "NIKEL" ) ) {
-			setAmountPaid( getAmountPaid() + getNikel() );
-		} else if( insertedCoin.equals( "DIMES" ) ) {
-			setAmountPaid( getAmountPaid() + getDimes() );
-		} else if( insertedCoin.equals( "QUARTER" ) ) {
-			setAmountPaid( getAmountPaid() + getQuarter() );
-		}
-	}
-
-	/**
-	 * Prompts the user to insert coins until they indicate they are done.
-	 * Calculates the total value of the inserted coins.
-	 */
-	public static void getTotalAmountFromUser() {
-
-		String userEntersMoreCoin;
-		do {
-			String coin = getCoin();
-			calculateInsertedCoinsValue( coin );
-			System.out.println( "Total amount paid is: " + getAmountPaid() + " cent." );
-			System.out.println( "Enter 'Y' to enter more coins or any other key to proceed:" );
-			userEntersMoreCoin = utilScanner.nextLine();
-		} while( userEntersMoreCoin.equalsIgnoreCase( "y" ) );
-	}
-
-
-	/**
-	 * Calculates the change to be returned to the user after a purchase.
-	 * Handles cases of insufficient payment, exact payment, and overpayment.
-	 * Resets the amount paid after calculation.
-	 * @param cost The cost of the product being purchased.
-	 * @return A flag indicating the sufficiency of the amount paid ({@link Flag#INSUFFICIENTAMOUNT} or {@link Flag#SUFFICIENTAMOUNT}).
-	 */
-	public static int calculateChange( int cost ) {
-
-		if( getAmountPaid() < cost ) {
-			System.out.println( "Insufficient cash supplied." );
-			System.out.println( "Please collect the cash coins." );
-			setAmountPaid( 0 );
-			return Flag.INSUFFICIENTAMOUNT.getFlag();
-		} else if( getAmountPaid() == cost ) {
-			System.out.println( "You paid the exact amount" );
-			setAmountPaid( 0 );;
-			return Flag.SUFFICIENTAMOUNT.getFlag();
-		} else {
-			System.out.println( "You have paid " + amountPaid + " cent" );
-			System.out.println( "Please collect the remaining cash " + (amountPaid - cost) + " cent" );
-			setAmountPaid( 0 );
-			return Flag.SUFFICIENTAMOUNT.getFlag();
-		}
-	}
-
-	/**
-	 * Processes the purchase of a product if sufficient payment is made.
-	 * Dispenses the product, updates its quantity, and provides feedback to the user.
-	 * @param product The product to be purchased.
-	 */
-	public static void buy( Products product ) {
-
-		int returnValue = calculateChange( product.getProductCost() );
-		if( returnValue != Flag.INSUFFICIENTAMOUNT.getFlag() ) {
-			product.setProductQuantity( product.getProductQuantity() - 1 );
-			System.out.println( "Collect the dispensed product." );
-			System.out.println( "You bought " + product.getProductName() + " at cost of " + product.getProductCost() + "cent." );
-			System.out.println( "Thanks for shopping." );
-			System.out.println();
-		}
-	}
-
-	/**
-	 * Initiates the purchase process for a selected product.
-	 * Checks product availability, gets payment from the user, and completes the purchase.
-	 * @param product The product to be purchased.
-	 * @throws MalformedURLException If a malformed URL has occurred (not directly used here but propagated).
-	 * @throws InterruptedException If the thread is interrupted while sleeping (not directly used here but propagated).
+	 * Initiates the purchase of a product using coin payment.
+	 * This method checks for product availability. If available, it creates a
+	 * {@link PaymentProcessor} instance to handle the coin insertion and change calculation.
+	 * Product quantity is decremented by the {@code PaymentProcessor} upon successful payment.
+	 *
+	 * @param product The {@link Products} object to be purchased.
+	 * @throws MalformedURLException If a URL related to product details (if any) is malformed. (Currently not used directly here but part of original signature)
+	 * @throws InterruptedException If the thread is interrupted. (Currently not used directly here but part of original signature)
 	 */
 	public static void purchase( Products product ) throws MalformedURLException, InterruptedException {
-
-		System.out.println( "Process initiated for buying " + product.getProductName() + " ..." );
-		if( product.getProductQuantity() == 0 ) {
-			System.out.println( product.getProductName() + " is OUT OF STOCK. Please enter any other index value" );
-		} else {
-			ProductUtilities.setProductDetails( product.getProductName() );
-
-			VendingMachineUtilities.getTotalAmountFromUser();
-			VendingMachineUtilities.buy( product );
+		System.out.println( "Process initiated for buying " + product.getProductName() + " with coins..." );
+		if (product.getProductQuantity() == 0) {
+			System.out.println(product.getProductName() + " is OUT OF STOCK. Please try another item or restock.");
+			return; // Exit if out of stock.
 		}
 
+		// Optional: Display more product details if necessary, though ProductUtilities.setProductDetails was not used previously.
+		// ProductUtilities.setProductDetails(product.getProductName());
+
+		PaymentProcessor paymentProcessor = new PaymentProcessor(utilScanner); // Use the static scanner for the payment processor.
+		boolean purchaseSuccessful = paymentProcessor.processCoinPurchase(product);
+
+		if (purchaseSuccessful) {
+			// Messages like "Collect dispensed product" and quantity updates are now handled by PaymentProcessor.
+			// This utility method now acts as a high-level coordinator for coin purchases.
+			// Additional logic after a successful purchase could be added here if needed.
+		} else {
+			// Payment failed. Messages are handled by PaymentProcessor.
+			// Additional logic for a failed purchase could be added here.
+		}
+		// The final "Thanks for shopping." message is also part of PaymentProcessor.processCoinPurchase.
 	}
 
 	/**
-	 * Checks if the vending machine is out of stock for all products.
-	 * Sets the {@link #vendingMachineEmptyFlag} accordingly.
-	 * @param p1 The first product.
-	 * @param p2 The second product.
+	 * Checks if the vending machine is completely out of stock for all provided products.
+	 * Sets the internal {@code vendingMachineEmptyFlag} based on the stock status.
+	 * This flag can be used by the main application loop to determine if operations should continue.
+	 *
+	 * @param p1 The first product to check.
+	 * @param p2 The second product to check.
 	 * @param p3 The third product.
 	 */
 	public static void vendingMachineEmpty( Products p1, Products p2, Products p3 ) {
@@ -227,21 +144,25 @@ public class VendingMachineUtilities extends Currency {
 	 * @return The valid product index (1, 2, or 3) entered by the user.
 	 */
 	private static int getProductIndexToRestock() {
-		System.out.println( "Enter the index of the product you want to restock:" );
-		System.out.println( "1: Gum, 2: CocaCola, 3: PotatoChips" );
-		int indexValue = -1;
-		try {
-			indexValue = utilScanner.nextInt();
-		} catch (InputMismatchException e) {
-			// Handled below
-		}
-		utilScanner.nextLine(); // Consume newline
+		while (true) {
+			System.out.println( "Enter the index of the product you want to restock:" );
+			System.out.println( "1: Gum, 2: CocaCola, 3: PotatoChips" );
+			int indexValue = -1;
+			try {
+				indexValue = utilScanner.nextInt();
+			} catch (InputMismatchException e) {
+				System.out.println( "Invalid input. Please enter a number (1, 2, or 3)." );
+			}
+			utilScanner.nextLine(); // Consume newline or invalid input
 
-		if ( indexValue < 1 || indexValue > 3 ) {
-			System.out.println( "Invalid index. Please enter 1, 2, or 3." );
-			return getProductIndexToRestock(); // Recursive call for valid input
+			if (indexValue >= 1 && indexValue <= 3) {
+				return indexValue;
+			} else {
+				if (indexValue != -1) { // Avoid double error message
+					System.out.println( "Invalid index. Please enter 1, 2, or 3." );
+				}
+			}
 		}
-		return indexValue;
 	}
 
 	/**
@@ -250,29 +171,43 @@ public class VendingMachineUtilities extends Currency {
 	 * @return The valid positive quantity entered by the user.
 	 */
 	private static int getQuantityToRestock() {
-		System.out.println( "Enter the quantity to add for the selected product:" );
-		int quantity = -1;
-		try {
-			quantity = utilScanner.nextInt();
-		} catch (InputMismatchException e) {
-			// Handled below
+		while (true) {
+			System.out.println( "Enter the quantity to add for the selected product:" );
+			int quantity = -1;
+			try {
+				quantity = utilScanner.nextInt();
+				if (quantity > 0) {
+					utilScanner.nextLine(); // Consume newline only after a successful int read
+					return quantity;
+				} else {
+					System.out.println( "Invalid quantity. Please enter a positive number." );
+				}
+			} catch (InputMismatchException e) {
+				System.out.println( "Invalid input. Please enter a whole number." );
+			}
+			// If we reach here, it's either an error or quantity <= 0
+			// For InputMismatchException, nextLine() might have already been called in some cases,
+			// but it's crucial to consume the rest of the line if not.
+			// However, if nextInt() fails, it doesn't consume the token.
+			// So, if an exception occurred, or if quantity was not > 0, we must ensure the line is cleared.
+			// The `finally` block in handleCreateAccount / handleLoadBalance is a good pattern.
+			// For here, if quantity was read but not >0, nextLine() wasn't called.
+			// If nextInt() threw exception, nextLine() wasn't called.
+			if (utilScanner.hasNextLine()) { // Check if there's something to consume
+                 utilScanner.nextLine(); // Consume the rest of the invalid input line
+            }
 		}
-		utilScanner.nextLine(); // Consume newline
-
-		if ( quantity <= 0 ) {
-			System.out.println( "Invalid quantity. Please enter a positive number." );
-			return getQuantityToRestock(); // Recursive call for valid input
-		}
-		return quantity;
 	}
 
 	/**
-	 * Allows the user to restock products in the vending machine.
-	 * Displays current stock, prompts for product and quantity to add,
-	 * and updates the product quantity.
-	 * @param gum The Gum product object.
-	 * @param cocacola The CocaCola product object.
-	 * @param potatochips The PotatoChips product object.
+	 * Allows restocking of products in the vending machine.
+	 * It displays the current stock of all products, then prompts the user to select a product
+	 * and enter a quantity to add. The selected product's quantity is then updated.
+	 * This operation also triggers an update of the {@code vendingMachineEmptyFlag}.
+	 *
+	 * @param gum The {@link Products} instance representing Gum.
+	 * @param cocacola The {@link Products} instance representing CocaCola.
+	 * @param potatochips The {@link Products} instance representing PotatoChips.
 	 */
 	public static void restockProducts( Products gum, Products cocacola, Products potatochips ) {
 		System.out.println( "\nCurrent Stock:" );
@@ -317,8 +252,11 @@ public class VendingMachineUtilities extends Currency {
 
 	/**
 	 * Handles the user login process.
-	 * @param userManager The UserManagement instance.
-	 * @return UserAccount object if login is successful, null otherwise.
+	 * Prompts for UserID and PIN, then attempts to authenticate the user
+	 * using the provided {@link UserManagement} instance.
+	 *
+	 * @param userManager The {@link UserManagement} instance responsible for user data and authentication.
+	 * @return The {@link UserAccount} object if login is successful; {@code null} otherwise.
 	 */
 	public static UserAccount handleLogin(UserManagement userManager) {
 		System.out.print( "Enter UserID: " );
@@ -338,7 +276,10 @@ public class VendingMachineUtilities extends Currency {
 
 	/**
 	 * Handles the user account creation process.
-	 * @param userManager The UserManagement instance.
+	 * Prompts for a new UserID, PIN, and an initial deposit amount.
+	 * Validates inputs and then attempts to create the user account via the {@link UserManagement} instance.
+	 *
+	 * @param userManager The {@link UserManagement} instance responsible for creating new user accounts.
 	 */
 	public static void handleCreateAccount(UserManagement userManager) {
 		System.out.print( "Enter new UserID: " );
@@ -376,22 +317,27 @@ public class VendingMachineUtilities extends Currency {
 	}
 
 	/**
-	 * Displays the current user's account balance.
-	 * @param currentUser The currently logged-in UserAccount.
+	 * Displays the current balance of the provided {@link UserAccount}.
+	 * If the provided user account is null (e.g., no user is logged in), an error message is printed.
+	 *
+	 * @param currentUser The {@link UserAccount} whose balance is to be displayed.
 	 */
 	public static void handleViewBalance(UserAccount currentUser) {
 		if (currentUser != null) {
 			System.out.println( "Your current balance is: " + currentUser.getBalance() + " cents." );
 		} else {
-			System.out.println( "Error: No user logged in." ); // Should not happen if called correctly
+			// This case should ideally be prevented by UI flow (e.g., option not shown if not logged in).
+			System.out.println( "Error: No user logged in to view balance." );
 		}
 	}
 
 	/**
-	 * Handles loading balance to the current user's account.
-	 * @param currentUser The currently logged-in UserAccount.
+	 * Handles loading (crediting) funds to the current user's account.
+	 * Prompts the user for the amount to load and validates that it is a positive integer.
+	 *
+	 * @param currentUser The {@link UserAccount} to which funds will be loaded. Must not be null.
 	 */
-	public static void handleLoadBalance(UserAccount currentUser) { // userManager removed as currentUser.credit is direct
+	public static void handleLoadBalance(UserAccount currentUser) {
 		if (currentUser != null) {
 			int amountToLoad = 0;
 			boolean validInput = false;
@@ -423,12 +369,16 @@ public class VendingMachineUtilities extends Currency {
 	}
 
 	/**
-	 * Processes a product purchase using the user's account balance.
-	 * @param product The product to be purchased.
-	 * @param currentUser The currently logged-in UserAccount.
+	 * Processes a product purchase using a user's account balance.
+	 * Checks for product availability and sufficient funds in the user's account.
+	 * If successful, it debits the account and decrements the product quantity.
+	 *
+	 * @param product The {@link Products} object to be purchased.
+	 * @param currentUser The {@link UserAccount} of the logged-in user making the purchase. Must not be null.
 	 */
 	public static void purchaseWithAccount(Products product, UserAccount currentUser) {
 		if (currentUser == null) {
+			// This check is a safeguard; UI flow should prevent this method from being called without a logged-in user.
 			System.out.println( "Error: No user logged in for account purchase." );
 			return;
 		}
