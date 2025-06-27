@@ -2,22 +2,26 @@ package vendingmachine.utilities;
 
 import java.net.MalformedURLException;
 import java.util.Scanner;
+import java.util.InputMismatchException; // Added for robust input
 
 import vendingmachine.currency.Currency;
 import vendingmachine.flags.Flag;
 import vendingmachine.product.bean.Products;
 import vendingmachine.product.utilities.ProductUtilities;
+import vendingmachine.user.UserAccount; // Added import
+import vendingmachine.user.UserManagement; // Added import
 
 /**
  * Provides utility methods for the vending machine operations.
  * This class handles user input, coin calculations, purchase processing,
- * and checking the vending machine's stock status.
+ * checking the vending machine's stock status, and user account management tasks.
  * It extends the {@link Currency} class to access coin values.
  */
 public class VendingMachineUtilities extends Currency {
 
 	private static int amountPaid;
 	private static int vendingMachineEmptyFlag;
+	private static final Scanner utilScanner = new Scanner(System.in); // Centralized Scanner
 
 	/**
 	 * Gets the total amount paid by the user.
@@ -61,15 +65,20 @@ public class VendingMachineUtilities extends Currency {
 	 * @return The valid product index entered by the user.
 	 */
 	public static int getProductIndex() {
+		// This method is for product selection during purchase,
+		// distinct from main menu choice.
+		System.out.println( "Please enter the index of product you want to buy (1-" + Products.getProductsCount() + ")." );
+		int indexValue = -1;
+		try {
+			indexValue = utilScanner.nextInt();
+		} catch (InputMismatchException e) {
+			// Handled below by default value and re-prompt
+		}
+		utilScanner.nextLine(); // Consume newline
 
-		System.out.println( "Please enter the index of product you want to buy." );
-		Scanner inputFromKeyboard = new Scanner( System.in );
-		int indexValue = inputFromKeyboard.nextInt();
-		inputFromKeyboard.nextLine();
 		if( indexValue < 1 || indexValue > (Products.getProductsCount()) ) {
-
 			System.out.println( "User entered Incorrect index value." );
-			System.out.println( "Index value should range form 1 to " + (Products.getProductsCount()) );
+			System.out.println( "Index value should range from 1 to " + (Products.getProductsCount()) );
 			return getProductIndex();
 		} else {
 			return indexValue;
@@ -82,21 +91,21 @@ public class VendingMachineUtilities extends Currency {
 	 * @return The valid coin string entered by the user.
 	 */
 	public static String getCoin() {
-
 		System.out.println( "Please enter Coin. (Valid coin values are NIKEL, DIMES and QUARTER.)" );
-		Scanner inputFromKeyboard = new Scanner( System.in );
-		String coin = inputFromKeyboard.next();
-		inputFromKeyboard.nextLine();
+		String coin = utilScanner.next().toUpperCase(); // Read and convert to upper for easier comparison
+		utilScanner.nextLine(); // Consume newline
+
 		if( coin.equals( "NIKEL" ) || coin.equals( "DIMES" ) || coin.equals( "QUARTER" ) ) {
 			System.out.println( "You entered a " + coin );
 			return coin;
-
 		} else {
-			System.out.println( "You entered a incorrect coin value" );
+			System.out.println( "You entered an incorrect coin value." );
 			System.out.println( "Valid coin values are NIKEL, DIMES and QUARTER." );
-			return coin;
+			// Recursive call or loop might be better, but for now, this matches original style
+			return getCoin();
 		}
 	}
+
 
 	/**
 	 * Calculates the value of the inserted coin and adds it to the total amount paid.
@@ -123,13 +132,12 @@ public class VendingMachineUtilities extends Currency {
 		do {
 			String coin = getCoin();
 			calculateInsertedCoinsValue( coin );
-			System.out.println( "Total amount paid is: " + getAmountPaid() + "cent" );
-			System.out.println( "Enter y to enter more coins and any other key to exit" );
-			Scanner inputFromKeyboard = new Scanner( System.in );
-			userEntersMoreCoin = inputFromKeyboard.next();
-			inputFromKeyboard.nextLine();
+			System.out.println( "Total amount paid is: " + getAmountPaid() + " cent." );
+			System.out.println( "Enter 'Y' to enter more coins or any other key to proceed:" );
+			userEntersMoreCoin = utilScanner.nextLine();
 		} while( userEntersMoreCoin.equalsIgnoreCase( "y" ) );
 	}
+
 
 	/**
 	 * Calculates the change to be returned to the user after a purchase.
@@ -213,4 +221,236 @@ public class VendingMachineUtilities extends Currency {
 
 	}
 
+	/**
+	 * Prompts the user to enter the index of the product they want to restock.
+	 * Validates the input to ensure it's within the valid range (1-3).
+	 * @return The valid product index (1, 2, or 3) entered by the user.
+	 */
+	private static int getProductIndexToRestock() {
+		System.out.println( "Enter the index of the product you want to restock:" );
+		System.out.println( "1: Gum, 2: CocaCola, 3: PotatoChips" );
+		int indexValue = -1;
+		try {
+			indexValue = utilScanner.nextInt();
+		} catch (InputMismatchException e) {
+			// Handled below
+		}
+		utilScanner.nextLine(); // Consume newline
+
+		if ( indexValue < 1 || indexValue > 3 ) {
+			System.out.println( "Invalid index. Please enter 1, 2, or 3." );
+			return getProductIndexToRestock(); // Recursive call for valid input
+		}
+		return indexValue;
+	}
+
+	/**
+	 * Prompts the user to enter the quantity to add for restocking.
+	 * Validates the input to ensure it's a positive integer.
+	 * @return The valid positive quantity entered by the user.
+	 */
+	private static int getQuantityToRestock() {
+		System.out.println( "Enter the quantity to add for the selected product:" );
+		int quantity = -1;
+		try {
+			quantity = utilScanner.nextInt();
+		} catch (InputMismatchException e) {
+			// Handled below
+		}
+		utilScanner.nextLine(); // Consume newline
+
+		if ( quantity <= 0 ) {
+			System.out.println( "Invalid quantity. Please enter a positive number." );
+			return getQuantityToRestock(); // Recursive call for valid input
+		}
+		return quantity;
+	}
+
+	/**
+	 * Allows the user to restock products in the vending machine.
+	 * Displays current stock, prompts for product and quantity to add,
+	 * and updates the product quantity.
+	 * @param gum The Gum product object.
+	 * @param cocacola The CocaCola product object.
+	 * @param potatochips The PotatoChips product object.
+	 */
+	public static void restockProducts( Products gum, Products cocacola, Products potatochips ) {
+		System.out.println( "\nCurrent Stock:" );
+		System.out.println( "1: " + gum.getProductName() + " - Quantity: " + gum.getProductQuantity() );
+		System.out.println( "2: " + cocacola.getProductName() + " - Quantity: " + cocacola.getProductQuantity() );
+		System.out.println( "3: " + potatochips.getProductName() + " - Quantity: " + potatochips.getProductQuantity() );
+		System.out.println();
+
+		int productIndex = getProductIndexToRestock();
+		int quantityToAdd = getQuantityToRestock();
+
+		Products selectedProduct = null;
+		String productName = "";
+
+		switch ( productIndex ) {
+			case 1:
+				selectedProduct = gum;
+				productName = gum.getProductName();
+				break;
+			case 2:
+				selectedProduct = cocacola;
+				productName = cocacola.getProductName();
+				break;
+			case 3:
+				selectedProduct = potatochips;
+				productName = potatochips.getProductName();
+				break;
+			default:
+				// Should not happen due to validation in getProductIndexToRestock
+				System.out.println( "Error: Invalid product index." );
+				return;
+		}
+
+		selectedProduct.setProductQuantity( selectedProduct.getProductQuantity() + quantityToAdd );
+		System.out.println( "Successfully restocked " + productName + "." );
+		System.out.println( "Added: " + quantityToAdd + ". New total: " + selectedProduct.getProductQuantity() );
+		System.out.println();
+		vendingMachineEmpty(gum, cocacola, potatochips); // Update empty flag
+	}
+
+	// --- New User Account Management Methods ---
+
+	/**
+	 * Handles the user login process.
+	 * @param userManager The UserManagement instance.
+	 * @return UserAccount object if login is successful, null otherwise.
+	 */
+	public static UserAccount handleLogin(UserManagement userManager) {
+		System.out.print( "Enter UserID: " );
+		String userID = utilScanner.nextLine();
+		System.out.print( "Enter PIN: " );
+		String pin = utilScanner.nextLine();
+
+		UserAccount user = userManager.authenticateUser(userID, pin);
+		if (user != null) {
+			System.out.println( "Login successful. Welcome " + userID + "!" );
+			return user;
+		} else {
+			System.out.println( "Login failed. Invalid UserID or PIN." );
+			return null;
+		}
+	}
+
+	/**
+	 * Handles the user account creation process.
+	 * @param userManager The UserManagement instance.
+	 */
+	public static void handleCreateAccount(UserManagement userManager) {
+		System.out.print( "Enter new UserID: " );
+		String userID = utilScanner.nextLine();
+		System.out.print( "Enter new PIN: " );
+		String pin = utilScanner.nextLine();
+		int initialDeposit = 0;
+		boolean validInput = false;
+		while(!validInput) {
+			System.out.print( "Enter initial deposit amount (in cents, non-negative): " );
+			try {
+				initialDeposit = utilScanner.nextInt();
+				if (initialDeposit >= 0) {
+					validInput = true;
+				} else {
+					System.out.println("Deposit cannot be negative. Please try again.");
+				}
+			} catch (InputMismatchException e) {
+				System.out.println("Invalid input. Please enter a number.");
+			} finally {
+				utilScanner.nextLine(); // Consume newline or invalid input
+			}
+		}
+
+		if (userID.isEmpty() || pin.isEmpty()) {
+			System.out.println("Account creation failed. UserID and PIN cannot be empty.");
+			return;
+		}
+
+		if (userManager.createUser(userID, pin, initialDeposit)) {
+			System.out.println( "Account created successfully for " + userID + "." );
+		} else {
+			System.out.println( "Account creation failed. UserID might be taken or inputs invalid." );
+		}
+	}
+
+	/**
+	 * Displays the current user's account balance.
+	 * @param currentUser The currently logged-in UserAccount.
+	 */
+	public static void handleViewBalance(UserAccount currentUser) {
+		if (currentUser != null) {
+			System.out.println( "Your current balance is: " + currentUser.getBalance() + " cents." );
+		} else {
+			System.out.println( "Error: No user logged in." ); // Should not happen if called correctly
+		}
+	}
+
+	/**
+	 * Handles loading balance to the current user's account.
+	 * @param currentUser The currently logged-in UserAccount.
+	 */
+	public static void handleLoadBalance(UserAccount currentUser) { // userManager removed as currentUser.credit is direct
+		if (currentUser != null) {
+			int amountToLoad = 0;
+			boolean validInput = false;
+			while(!validInput) {
+				System.out.print( "Enter amount to load (in cents, positive number): " );
+				try {
+					amountToLoad = utilScanner.nextInt();
+					if (amountToLoad > 0) {
+						validInput = true;
+					} else {
+						System.out.println("Amount must be positive. Please try again.");
+					}
+				} catch (InputMismatchException e) {
+					System.out.println("Invalid input. Please enter a number.");
+				} finally {
+					utilScanner.nextLine(); // Consume newline or invalid input
+				}
+			}
+
+			if (currentUser.credit(amountToLoad)) {
+				System.out.println( "Balance updated. New balance: " + currentUser.getBalance() + " cents." );
+			} else {
+				// This case should ideally not be reached if amountToLoad is validated as positive
+				System.out.println( "Invalid amount. Balance not loaded." );
+			}
+		} else {
+			System.out.println( "Error: No user logged in." ); // Should not happen
+		}
+	}
+
+	/**
+	 * Processes a product purchase using the user's account balance.
+	 * @param product The product to be purchased.
+	 * @param currentUser The currently logged-in UserAccount.
+	 */
+	public static void purchaseWithAccount(Products product, UserAccount currentUser) {
+		if (currentUser == null) {
+			System.out.println( "Error: No user logged in for account purchase." );
+			return;
+		}
+
+		if (product.getProductQuantity() == 0) {
+			System.out.println( product.getProductName() + " is OUT OF STOCK." );
+			System.out.println( "Thanks for shopping." ); // Consistent message
+			System.out.println();
+			return;
+		}
+
+		System.out.println( "Attempting purchase of " + product.getProductName() + " for " + product.getProductCost() + " cents using account balance." );
+		if (currentUser.debit(product.getProductCost())) {
+			product.setProductQuantity(product.getProductQuantity() - 1);
+			System.out.println( "Purchase successful with account! Collect " + product.getProductName() + "." );
+			System.out.println( "Remaining balance: " + currentUser.getBalance() + " cents." );
+			// ProductUtilities.setProductDetails(product.getProductName()); // Optional: if it shows more details
+		} else {
+			System.out.println( "Purchase failed. Insufficient account balance." );
+			System.out.println( "Your balance is " + currentUser.getBalance() + " cents. Product cost is " + product.getProductCost() + " cents." );
+		}
+		System.out.println( "Thanks for shopping." );
+		System.out.println();
+	}
 }
