@@ -2,15 +2,19 @@
 package vendingmachine;
 
 import java.net.MalformedURLException;
-import java.util.Scanner; // Added import
+import java.util.Scanner;
+import java.util.ArrayList; // Added import
+import java.util.List;    // Added import
+import vendingmachine.product.bean.Products; // Required for List<Products>
+import vendingmachine.products.CandyBar; // Added import
 import vendingmachine.products.CocaCola;
 import vendingmachine.products.Gum;
 import vendingmachine.products.PotatoChips;
-import vendingmachine.user.UserAccount; // Added import
-import vendingmachine.user.UserManagement; // Added import
+import vendingmachine.user.UserAccount;
+import vendingmachine.user.UserManagement;
 import vendingmachine.utilities.VendingMachineUtilities;
-import vendingmachine.ui.MenuHandler; // Added import for MenuHandler
-import vendingmachine.ui.ProcessChoiceResult; // Required for result type
+import vendingmachine.ui.MenuHandler;
+import vendingmachine.ui.ProcessChoiceResult;
 
 /**
  * Main class for the Vending Machine application.
@@ -26,8 +30,27 @@ public class VendingMachine {
 	private static UserManagement userManager = new UserManagement(); // Manages user accounts
 	private static UserAccount currentUser = null; // Holds the currently logged-in user, if any
 	private static Scanner mainScanner = new Scanner(System.in); // Scanner for reading main menu input
+	private static List<Products> allProducts; // List to hold all product instances
 
 	// displayProductListing, displayLoggedOutMenu, and displayLoggedInMenu methods were moved to MenuHandler.
+
+	/**
+	 * Initializes the list of products available in the vending machine.
+	 * Products are added to the `allProducts` list. This method should be called
+	 * once at the beginning of the application lifecycle.
+	 */
+	private static void initializeProducts() {
+		allProducts = new ArrayList<>();
+		// Assuming Gum, CocaCola, PotatoChips classes exist and have default constructors
+		// or constructors that set their specific properties.
+		allProducts.add(new Gum());        // Index 0
+		allProducts.add(new CocaCola());   // Index 1
+		allProducts.add(new PotatoChips());// Index 2
+		allProducts.add(new CandyBar());   // Index 3 - Added new product
+		// To add a new product later, one would add, for example:
+		// allProducts.add(new SomeOtherProduct());
+		// And then ensure MenuHandler and other relevant classes can handle variable product list sizes.
+	}
 
 	/**
 	 * The main entry point for the Vending Machine application.
@@ -43,10 +66,7 @@ public class VendingMachine {
 	 */
 	public static void main( String[] args ) throws InterruptedException, MalformedURLException {
 
-		// Initialize products
-		Gum gum = new Gum();
-		CocaCola cocacola = new CocaCola();
-		PotatoChips potatochips = new PotatoChips();
+		initializeProducts(); // Initialize the list of all products
 
 		// Pre-populate with a test user for easier testing
 		userManager.createUser("testUser", "1234", 1000);
@@ -57,9 +77,9 @@ public class VendingMachine {
 
 		do {
 			if (currentUser == null) {
-				MenuHandler.displayLoggedOutMenu(gum, cocacola, potatochips);
+				MenuHandler.displayLoggedOutMenu(allProducts);
 			} else {
-				MenuHandler.displayLoggedInMenu(currentUser, gum, cocacola, potatochips);
+				MenuHandler.displayLoggedInMenu(currentUser, allProducts);
 			}
 
 			if (mainScanner.hasNextInt()) {
@@ -74,9 +94,9 @@ public class VendingMachine {
 			// Process the user's choice using MenuHandler
 			ProcessChoiceResult result;
 			if (currentUser == null) { // User is currently logged out
-				result = MenuHandler.processLoggedOutChoice(indexValue, mainScanner, userManager, gum, cocacola, potatochips);
+				result = MenuHandler.processLoggedOutChoice(indexValue, mainScanner, userManager, allProducts);
 			} else { // User is currently logged in
-				result = MenuHandler.processLoggedInChoice(indexValue, mainScanner, currentUser, userManager, gum, cocacola, potatochips);
+				result = MenuHandler.processLoggedInChoice(indexValue, mainScanner, currentUser, userManager, allProducts);
 			}
 
 			// Update current user status (e.g., after login/logout) and exit flag based on processing result
@@ -86,7 +106,7 @@ public class VendingMachine {
 			// After each action (if not exiting), check and update the vending machine's empty status.
 			// This flag might be used by other parts of the system or for display purposes.
 			if (!exitApp) {
-				VendingMachineUtilities.vendingMachineEmpty( gum, potatochips, cocacola );
+				VendingMachineUtilities.vendingMachineEmpty(allProducts);
 			}
 
 		} while( !exitApp );

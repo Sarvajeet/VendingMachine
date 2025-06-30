@@ -9,8 +9,9 @@ import vendingmachine.flags.Flag;
 import vendingmachine.product.bean.Products;
 import vendingmachine.product.utilities.ProductUtilities;
 import vendingmachine.user.UserAccount; // Added import
-import vendingmachine.user.UserManagement; // Added import
-import vendingmachine.payment.PaymentProcessor; // Added import
+import vendingmachine.user.UserManagement;
+import vendingmachine.payment.PaymentProcessor;
+import java.util.List; // Added import
 
 /**
  * Provides utility methods for various operations of the Vending Machine.
@@ -53,25 +54,33 @@ public class VendingMachineUtilities extends Currency {
 	 *
 	 * @return The valid product index (1-based) entered by the user.
 	 */
-	public static int getProductIndex() {
+	/**
+	 * Prompts the user to enter a product index within a given range.
+	 * Input is validated to ensure it's a number within the specified range.
+	 * This method can be used for any generic product selection from a list of size maxIndex.
+	 *
+	 * @param maxIndex The maximum valid index (inclusive, 1-based).
+	 * @param scanner The {@link Scanner} instance to use for input.
+	 * @return The valid product index (1-based) entered by the user.
+	 */
+	public static int getProductIndex(int maxIndex, Scanner scanner) {
 		while (true) {
-			System.out.println( "Please enter the index of product you want to buy (1-" + Products.getProductsCount() + ")." );
+			System.out.println( "Please enter the product index (1-" + maxIndex + ")." );
 			int indexValue = -1;
 			try {
-				indexValue = utilScanner.nextInt();
+				indexValue = scanner.nextInt();
 			} catch (InputMismatchException e) {
 				System.out.println( "Invalid input. Please enter a number." );
 			}
-			utilScanner.nextLine(); // Consume newline or invalid input
+			scanner.nextLine(); // Consume newline or invalid input
 
-			if (indexValue >= 1 && indexValue <= Products.getProductsCount()) {
+			if (indexValue >= 1 && indexValue <= maxIndex) {
 				return indexValue;
 			} else {
-				// Error message printed if not an InputMismatchException but still out of range
-				if (indexValue != -1) { // Avoid double error message if already caught by InputMismatch
-					System.out.println( "User entered Incorrect index value." );
+				if (indexValue != -1) {
+					System.out.println( "User entered an incorrect index value." );
 				}
-				System.out.println( "Index value should range from 1 to " + (Products.getProductsCount()) );
+				System.out.println( "Index value should range from 1 to " + maxIndex + "." );
 			}
 		}
 	}
@@ -123,43 +132,51 @@ public class VendingMachineUtilities extends Currency {
 	 * Sets the internal {@code vendingMachineEmptyFlag} based on the stock status.
 	 * This flag can be used by the main application loop to determine if operations should continue.
 	 *
-	 * @param p1 The first product to check.
-	 * @param p2 The second product to check.
-	 * @param p3 The third product.
+	 * @param allProducts A list of all {@link Products} in the machine.
 	 */
-	public static void vendingMachineEmpty( Products p1, Products p2, Products p3 ) {
-
-		if( p1.getProductQuantity() == 0 && p2.getProductQuantity() == 0 && p3.getProductQuantity() == 0 ) {
-			setVendingMachineEmptyFlag( 0 );
-			System.out.println( "Vending Machine is OUT OF STOCK !!" );
+	public static void vendingMachineEmpty(List<Products> allProducts) {
+		boolean allEmpty = true;
+		if (allProducts == null || allProducts.isEmpty()) {
+			// If there are no products defined, consider the machine "empty" or handle as an error/special state.
+			// For now, setting it as empty. This could be debated based on requirements.
+			allEmpty = true;
 		} else {
-			setVendingMachineEmptyFlag( 1 );
+			for (Products product : allProducts) {
+				if (product.getProductQuantity() > 0) {
+					allEmpty = false; // Found at least one product with stock
+					break;
+				}
+			}
 		}
-
+		setVendingMachineEmptyFlag(allEmpty ? 0 : 1); // 0 if empty, 1 if not
+		if (allEmpty) {
+			System.out.println("Vending Machine is OUT OF STOCK !!");
+		}
 	}
 
 	/**
 	 * Prompts the user to enter the index of the product they want to restock.
-	 * Validates the input to ensure it's within the valid range (1-3).
-	 * @return The valid product index (1, 2, or 3) entered by the user.
+	 * Validates the input to ensure it's within the valid range (1 to maxIndex).
+	 * @param maxIndex The maximum valid index for product selection.
+	 * @param scanner The Scanner instance to use for input.
+	 * @return The valid product index (1-based) entered by the user.
 	 */
-	private static int getProductIndexToRestock() {
+	private static int getProductIndexToRestock(int maxIndex, Scanner scanner) {
 		while (true) {
-			System.out.println( "Enter the index of the product you want to restock:" );
-			System.out.println( "1: Gum, 2: CocaCola, 3: PotatoChips" );
+			System.out.println("Enter the index of the product you want to restock (1-" + maxIndex + "):");
 			int indexValue = -1;
 			try {
-				indexValue = utilScanner.nextInt();
+				indexValue = scanner.nextInt();
 			} catch (InputMismatchException e) {
-				System.out.println( "Invalid input. Please enter a number (1, 2, or 3)." );
+				System.out.println("Invalid input. Please enter a number (1-" + maxIndex + ").");
 			}
-			utilScanner.nextLine(); // Consume newline or invalid input
+			scanner.nextLine(); // Consume newline or invalid input
 
-			if (indexValue >= 1 && indexValue <= 3) {
+			if (indexValue >= 1 && indexValue <= maxIndex) {
 				return indexValue;
 			} else {
 				if (indexValue != -1) { // Avoid double error message
-					System.out.println( "Invalid index. Please enter 1, 2, or 3." );
+					System.out.println("Invalid index. Please enter a number between 1 and " + maxIndex + ".");
 				}
 			}
 		}
@@ -168,87 +185,66 @@ public class VendingMachineUtilities extends Currency {
 	/**
 	 * Prompts the user to enter the quantity to add for restocking.
 	 * Validates the input to ensure it's a positive integer.
+	 * @param scanner The Scanner instance to use for input.
 	 * @return The valid positive quantity entered by the user.
 	 */
-	private static int getQuantityToRestock() {
+	private static int getQuantityToRestock(Scanner scanner) {
 		while (true) {
-			System.out.println( "Enter the quantity to add for the selected product:" );
+			System.out.println("Enter the quantity to add for the selected product:");
 			int quantity = -1;
 			try {
-				quantity = utilScanner.nextInt();
+				quantity = scanner.nextInt();
 				if (quantity > 0) {
-					utilScanner.nextLine(); // Consume newline only after a successful int read
+					scanner.nextLine(); // Consume newline only after a successful int read
 					return quantity;
 				} else {
-					System.out.println( "Invalid quantity. Please enter a positive number." );
+					System.out.println("Invalid quantity. Please enter a positive number.");
 				}
 			} catch (InputMismatchException e) {
-				System.out.println( "Invalid input. Please enter a whole number." );
+				System.out.println("Invalid input. Please enter a whole number.");
 			}
-			// If we reach here, it's either an error or quantity <= 0
-			// For InputMismatchException, nextLine() might have already been called in some cases,
-			// but it's crucial to consume the rest of the line if not.
-			// However, if nextInt() fails, it doesn't consume the token.
-			// So, if an exception occurred, or if quantity was not > 0, we must ensure the line is cleared.
-			// The `finally` block in handleCreateAccount / handleLoadBalance is a good pattern.
-			// For here, if quantity was read but not >0, nextLine() wasn't called.
-			// If nextInt() threw exception, nextLine() wasn't called.
-			if (utilScanner.hasNextLine()) { // Check if there's something to consume
-                 utilScanner.nextLine(); // Consume the rest of the invalid input line
+			if (scanner.hasNextLine()) {
+                 scanner.nextLine();
             }
 		}
 	}
 
 	/**
 	 * Allows restocking of products in the vending machine.
-	 * It displays the current stock of all products, then prompts the user to select a product
-	 * and enter a quantity to add. The selected product's quantity is then updated.
+	 * It displays the current stock of all products from the provided list,
+	 * then prompts the user to select a product by its displayed index and enter a quantity to add.
+	 * The selected product's quantity is then updated.
 	 * This operation also triggers an update of the {@code vendingMachineEmptyFlag}.
 	 *
-	 * @param gum The {@link Products} instance representing Gum.
-	 * @param cocacola The {@link Products} instance representing CocaCola.
-	 * @param potatochips The {@link Products} instance representing PotatoChips.
+	 * @param allProducts A list of all {@link Products} in the machine.
+	 * @param scanner The {@link Scanner} instance to use for reading user input.
 	 */
-	public static void restockProducts( Products gum, Products cocacola, Products potatochips ) {
-		System.out.println( "\nCurrent Stock:" );
-		System.out.println( "1: " + gum.getProductName() + " - Quantity: " + gum.getProductQuantity() );
-		System.out.println( "2: " + cocacola.getProductName() + " - Quantity: " + cocacola.getProductQuantity() );
-		System.out.println( "3: " + potatochips.getProductName() + " - Quantity: " + potatochips.getProductQuantity() );
-		System.out.println();
-
-		int productIndex = getProductIndexToRestock();
-		int quantityToAdd = getQuantityToRestock();
-
-		Products selectedProduct = null;
-		String productName = "";
-
-		switch ( productIndex ) {
-			case 1:
-				selectedProduct = gum;
-				productName = gum.getProductName();
-				break;
-			case 2:
-				selectedProduct = cocacola;
-				productName = cocacola.getProductName();
-				break;
-			case 3:
-				selectedProduct = potatochips;
-				productName = potatochips.getProductName();
-				break;
-			default:
-				// Should not happen due to validation in getProductIndexToRestock
-				System.out.println( "Error: Invalid product index." );
-				return;
+	public static void restockProducts(List<Products> allProducts, Scanner scanner) {
+		System.out.println("\nCurrent Stock for Restocking:");
+		if (allProducts == null || allProducts.isEmpty()) {
+			System.out.println("No products to restock.");
+			return;
 		}
-
-		selectedProduct.setProductQuantity( selectedProduct.getProductQuantity() + quantityToAdd );
-		System.out.println( "Successfully restocked " + productName + "." );
-		System.out.println( "Added: " + quantityToAdd + ". New total: " + selectedProduct.getProductQuantity() );
+		for (int i = 0; i < allProducts.size(); i++) {
+			Products p = allProducts.get(i);
+			System.out.println((i + 1) + ": " + p.getProductName() + " - Quantity: " + p.getProductQuantity());
+		}
 		System.out.println();
-		vendingMachineEmpty(gum, cocacola, potatochips); // Update empty flag
+
+		int productIndexChoice = getProductIndexToRestock(allProducts.size(), scanner); // 1-based index
+		int quantityToAdd = getQuantityToRestock(scanner);
+
+		Products selectedProduct = allProducts.get(productIndexChoice - 1); // Convert to 0-based index for list access
+
+		selectedProduct.setProductQuantity(selectedProduct.getProductQuantity() + quantityToAdd);
+		System.out.println("Successfully restocked " + selectedProduct.getProductName() + ".");
+		System.out.println("Added: " + quantityToAdd + ". New total: " + selectedProduct.getProductQuantity());
+		System.out.println();
+
+		vendingMachineEmpty(allProducts); // Update empty flag based on the list
 	}
 
-	// --- New User Account Management Methods ---
+	// --- User Account Management Methods (handleLogin, handleCreateAccount, etc.) remain unchanged by this subtask ---
 
 	/**
 	 * Handles the user login process.
