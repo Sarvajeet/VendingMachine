@@ -11,6 +11,8 @@ import vendingmachine.products.CocaCola;
 import vendingmachine.products.Gum;
 import vendingmachine.products.PotatoChips;
 import vendingmachine.user.UserAccount;
+import vendingmachine.inventory.InventoryManager;
+import vendingmachine.inventory.RemoteInventoryManagement;
 import vendingmachine.user.UserManagement;
 import vendingmachine.utilities.VendingMachineUtilities;
 import vendingmachine.ui.MenuHandler;
@@ -31,6 +33,8 @@ public class VendingMachine {
 	private static UserAccount currentUser = null; // Holds the currently logged-in user, if any
 	private static Scanner mainScanner = new Scanner(System.in); // Scanner for reading main menu input
 	private static List<Products> allProducts; // List to hold all product instances
+	private static InventoryManager inventoryManager; // Manages inventory
+	private static RemoteInventoryManagement remoteInventoryManagement;
 
 	// displayProductListing, displayLoggedOutMenu, and displayLoggedInMenu methods were moved to MenuHandler.
 
@@ -67,6 +71,8 @@ public class VendingMachine {
 	public static void main( String[] args ) throws InterruptedException, MalformedURLException {
 
 		initializeProducts(); // Initialize the list of all products
+		inventoryManager = new InventoryManager(allProducts); // Initialize the inventory manager
+		remoteInventoryManagement = new RemoteInventoryManagement(inventoryManager);
 
 		// Pre-populate with a test user for easier testing
 		userManager.createUser("testUser", "1234", 1000);
@@ -77,26 +83,30 @@ public class VendingMachine {
 
 		do {
 			if (currentUser == null) {
-				MenuHandler.displayLoggedOutMenu(allProducts);
+				MenuHandler.displayLoggedOutMenu(allProducts, inventoryManager);
 			} else {
-				MenuHandler.displayLoggedInMenu(currentUser, allProducts);
+				MenuHandler.displayLoggedInMenu(currentUser, allProducts, inventoryManager);
 			}
 
-			if (mainScanner.hasNextInt()) {
-				indexValue = mainScanner.nextInt();
-				mainScanner.nextLine(); // consume newline
+			if (mainScanner.hasNextLine()) {
+				String input = mainScanner.nextLine();
+				try {
+					indexValue = Integer.parseInt(input);
+				} catch (NumberFormatException e) {
+					System.out.println("Invalid input. Please enter a number.");
+					indexValue = -1; // Invalid choice to force loop continuation or error handling
+				}
 			} else {
-				System.out.println("Invalid input. Please enter a number.");
-				mainScanner.nextLine(); // consume invalid input
-				indexValue = -1; // Invalid choice to force loop continuation or error handling
+				// No more input, exit the loop
+				break;
 			}
 
 			// Process the user's choice using MenuHandler
 			ProcessChoiceResult result;
 			if (currentUser == null) { // User is currently logged out
-				result = MenuHandler.processLoggedOutChoice(indexValue, mainScanner, userManager, allProducts);
+				result = MenuHandler.processLoggedOutChoice(indexValue, mainScanner, userManager, allProducts, inventoryManager);
 			} else { // User is currently logged in
-				result = MenuHandler.processLoggedInChoice(indexValue, mainScanner, currentUser, userManager, allProducts);
+				result = MenuHandler.processLoggedInChoice(indexValue, mainScanner, currentUser, userManager, allProducts, inventoryManager);
 			}
 
 			// Update current user status (e.g., after login/logout) and exit flag based on processing result

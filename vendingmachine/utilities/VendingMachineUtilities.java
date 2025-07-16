@@ -9,9 +9,11 @@ import vendingmachine.flags.Flag;
 import vendingmachine.product.bean.Products;
 import vendingmachine.product.utilities.ProductUtilities;
 import vendingmachine.user.UserAccount; // Added import
+import vendingmachine.inventory.RemoteInventoryManagement;
 import vendingmachine.user.UserManagement;
 import vendingmachine.payment.PaymentProcessor;
 import java.util.List; // Added import
+import java.util.Map;
 
 /**
  * Provides utility methods for various operations of the Vending Machine.
@@ -103,9 +105,9 @@ public class VendingMachineUtilities extends Currency {
 	 * @throws MalformedURLException If a URL related to product details (if any) is malformed. (Currently not used directly here but part of original signature)
 	 * @throws InterruptedException If the thread is interrupted. (Currently not used directly here but part of original signature)
 	 */
-	public static void purchase( Products product ) throws MalformedURLException, InterruptedException {
+public static void purchase( Products product, vendingmachine.inventory.InventoryManager inventoryManager ) throws MalformedURLException, InterruptedException {
 		System.out.println( "Process initiated for buying " + product.getProductName() + " with coins..." );
-		if (product.getProductQuantity() == 0) {
+		if (inventoryManager.getStock(product.getProductName()) == 0) {
 			System.out.println(product.getProductName() + " is OUT OF STOCK. Please try another item or restock.");
 			return; // Exit if out of stock.
 		}
@@ -117,6 +119,7 @@ public class VendingMachineUtilities extends Currency {
 		boolean purchaseSuccessful = paymentProcessor.processCoinPurchase(product);
 
 		if (purchaseSuccessful) {
+			inventoryManager.decreaseStock(product.getProductName());
 			// Messages like "Collect dispensed product" and quantity updates are now handled by PaymentProcessor.
 			// This utility method now acts as a high-level coordinator for coin purchases.
 			// Additional logic after a successful purchase could be added here if needed.
@@ -372,14 +375,14 @@ public class VendingMachineUtilities extends Currency {
 	 * @param product The {@link Products} object to be purchased.
 	 * @param currentUser The {@link UserAccount} of the logged-in user making the purchase. Must not be null.
 	 */
-	public static void purchaseWithAccount(Products product, UserAccount currentUser) {
+	public static void purchaseWithAccount(Products product, UserAccount currentUser, vendingmachine.inventory.InventoryManager inventoryManager) {
 		if (currentUser == null) {
 			// This check is a safeguard; UI flow should prevent this method from being called without a logged-in user.
 			System.out.println( "Error: No user logged in for account purchase." );
 			return;
 		}
 
-		if (product.getProductQuantity() == 0) {
+		if (inventoryManager.getStock(product.getProductName()) == 0) {
 			System.out.println( product.getProductName() + " is OUT OF STOCK." );
 			System.out.println( "Thanks for shopping." ); // Consistent message
 			System.out.println();
@@ -388,7 +391,7 @@ public class VendingMachineUtilities extends Currency {
 
 		System.out.println( "Attempting purchase of " + product.getProductName() + " for " + product.getProductCost() + " cents using account balance." );
 		if (currentUser.debit(product.getProductCost())) {
-			product.setProductQuantity(product.getProductQuantity() - 1);
+			inventoryManager.decreaseStock(product.getProductName());
 			System.out.println( "Purchase successful with account! Collect " + product.getProductName() + "." );
 			System.out.println( "Remaining balance: " + currentUser.getBalance() + " cents." );
 			// ProductUtilities.setProductDetails(product.getProductName()); // Optional: if it shows more details
@@ -398,5 +401,51 @@ public class VendingMachineUtilities extends Currency {
 		}
 		System.out.println( "Thanks for shopping." );
 		System.out.println();
+	}
+
+	public static void handleRemoteInventoryManagement(Scanner scanner, RemoteInventoryManagement remoteInventoryManagement) {
+		while (true) {
+			System.out.println("\n--- Remote Inventory Management ---");
+			System.out.println("1. View All Inventory");
+			System.out.println("2. View Inventory for a Specific Product");
+			System.out.println("3. Exit");
+			System.out.print("Please enter your choice: ");
+
+			int choice = -1;
+			try {
+				choice = scanner.nextInt();
+			} catch (InputMismatchException e) {
+				System.out.println("Invalid input. Please enter a number.");
+			}
+			scanner.nextLine(); // Consume newline
+
+			switch (choice) {
+				case 1:
+					viewAllInventory(remoteInventoryManagement);
+					break;
+				case 2:
+					viewInventoryForProduct(scanner, remoteInventoryManagement);
+					break;
+				case 3:
+					return;
+				default:
+					System.out.println("Invalid choice. Please try again.");
+			}
+		}
+	}
+
+	private static void viewAllInventory(RemoteInventoryManagement remoteInventoryManagement) {
+		Map<String, Integer> inventory = remoteInventoryManagement.getInventory();
+		System.out.println("\n--- All Product Inventory ---");
+		for (Map.Entry<String, Integer> entry : inventory.entrySet()) {
+			System.out.println(entry.getKey() + ": " + entry.getValue());
+		}
+	}
+
+	private static void viewInventoryForProduct(Scanner scanner, RemoteInventoryManagement remoteInventoryManagement) {
+		System.out.print("Enter the product name: ");
+		String productName = scanner.nextLine();
+		int stock = remoteInventoryManagement.getInventory(productName);
+		System.out.println("Inventory for " + productName + ": " + stock);
 	}
 }
