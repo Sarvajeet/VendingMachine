@@ -26,7 +26,7 @@ public class MenuHandler {
      * Products are indexed starting from 1 for display purposes.
      * @param allProducts A list of {@link Products} to be displayed.
      */
-    public static void displayProductListing(List<Products> allProducts) {
+    public static void displayProductListing(List<Products> allProducts, vendingmachine.inventory.InventoryManager inventoryManager) {
         System.out.println("Index \t ProductName \t\t Cost \t\t Quantity Available ");
         if (allProducts == null || allProducts.isEmpty()) {
             System.out.println("No products available.");
@@ -39,7 +39,7 @@ public class MenuHandler {
                               (i + 1),
                               product.getProductName(),
                               product.getProductCost(),
-                              product.getProductQuantity());
+                              inventoryManager.getStock(product.getProductName()));
         }
     }
 
@@ -48,11 +48,12 @@ public class MenuHandler {
      * Product listing is followed by general machine options.
      * @param allProducts A list of {@link Products} to be displayed.
      */
-    public static void displayLoggedOutMenu(List<Products> allProducts) {
+    public static void displayLoggedOutMenu(List<Products> allProducts, vendingmachine.inventory.InventoryManager inventoryManager) {
         System.out.println("\n--- Vending Machine Menu ---");
-        displayProductListing(allProducts);
+        displayProductListing(allProducts, inventoryManager);
         int nextOptionIndex = (allProducts != null ? allProducts.size() : 0) + 1;
         System.out.println(nextOptionIndex++ + "    \t Restock Products");
+        System.out.println(nextOptionIndex++ + "    \t Remote Inventory Management");
         System.out.println(nextOptionIndex++ + "    \t Login to User Account");
         System.out.println(nextOptionIndex++ + "    \t Create User Account");
         System.out.println(nextOptionIndex + "    \t Exit");
@@ -65,10 +66,10 @@ public class MenuHandler {
      * @param currentUser The currently logged-in {@link UserAccount}.
      * @param allProducts A list of {@link Products} to be displayed.
      */
-    public static void displayLoggedInMenu(UserAccount currentUser, List<Products> allProducts) {
+    public static void displayLoggedInMenu(UserAccount currentUser, List<Products> allProducts, vendingmachine.inventory.InventoryManager inventoryManager) {
         System.out.println("\n--- Vending Machine Menu ---");
         System.out.println("Logged in as: " + currentUser.getUserID());
-        displayProductListing(allProducts);
+        displayProductListing(allProducts, inventoryManager);
         int nextOptionIndex = (allProducts != null ? allProducts.size() : 0) + 1;
         System.out.println(nextOptionIndex++ + "    \t Restock Products");
         System.out.println(nextOptionIndex++ + "    \t View Account Balance");
@@ -89,7 +90,7 @@ public class MenuHandler {
      * @return A {@link ProcessChoiceResult} object containing the new current user (null if login failed or not attempted)
      *         and a boolean indicating if the application should exit.
      */
-    public static ProcessChoiceResult processLoggedOutChoice(int choice, Scanner scanner, UserManagement userManager, List<Products> allProducts) {
+    public static ProcessChoiceResult processLoggedOutChoice(int choice, Scanner scanner, UserManagement userManager, List<Products> allProducts, vendingmachine.inventory.InventoryManager inventoryManager) {
         UserAccount newCurrentUser = null;
         boolean exitApplication = false;
         int productListSize = (allProducts != null ? allProducts.size() : 0);
@@ -97,7 +98,12 @@ public class MenuHandler {
         // Product choices are 1 to productListSize
         if (choice >= 1 && choice <= productListSize) {
             Products selectedProduct = allProducts.get(choice - 1);
-            VendingMachineUtilities.purchase(selectedProduct);
+            try {
+				VendingMachineUtilities.purchase(selectedProduct, inventoryManager);
+			} catch (java.net.MalformedURLException | InterruptedException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
         } else {
             // Other menu options are indexed after product listings
             int optionIndex = choice - productListSize;
@@ -109,13 +115,16 @@ public class MenuHandler {
                     System.out.println("Restock functionality to be fully adapted for List<Products> in VendingMachineUtilities.");
                     VendingMachineUtilities.restockProducts(allProducts, scanner); // Ideal future call
                     break;
-                case 2: // Login to User Account
+                case 2: // Remote Inventory Management
+			VendingMachineUtilities.handleRemoteInventoryManagement(scanner, new vendingmachine.inventory.RemoteInventoryManagement(inventoryManager));
+                    break;
+                case 3: // Login to User Account
                     newCurrentUser = VendingMachineUtilities.handleLogin(userManager);
                     break;
-                case 3: // Create User Account
+                case 4: // Create User Account
                     VendingMachineUtilities.handleCreateAccount(userManager);
                     break;
-                case 4: // Exit
+                case 5: // Exit
                     System.out.println("Exiting application. Thank you!");
                     exitApplication = true;
                     break;
@@ -141,7 +150,7 @@ public class MenuHandler {
      * @return A {@link ProcessChoiceResult} object containing the updated current user status
      *         and a boolean indicating if the application should exit.
      */
-    public static ProcessChoiceResult processLoggedInChoice(int choice, Scanner scanner, UserAccount currentUser, UserManagement userManager, List<Products> allProducts) {
+    public static ProcessChoiceResult processLoggedInChoice(int choice, Scanner scanner, UserAccount currentUser, UserManagement userManager, List<Products> allProducts, vendingmachine.inventory.InventoryManager inventoryManager) {
         boolean exitApplication = false;
         UserAccount nextUserStatus = currentUser;
         int productListSize = (allProducts != null ? allProducts.size() : 0);
@@ -152,9 +161,14 @@ public class MenuHandler {
             System.out.print("Pay with account balance (Y/N)? ");
             String payWithAccountChoice = scanner.nextLine().trim();
             if (payWithAccountChoice.equalsIgnoreCase("Y")) {
-                VendingMachineUtilities.purchaseWithAccount(selectedProduct, currentUser);
+                VendingMachineUtilities.purchaseWithAccount(selectedProduct, currentUser, inventoryManager);
             } else {
-                VendingMachineUtilities.purchase(selectedProduct);
+                try {
+					VendingMachineUtilities.purchase(selectedProduct, inventoryManager);
+				} catch (java.net.MalformedURLException | InterruptedException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
             }
         } else {
             // Other menu options
